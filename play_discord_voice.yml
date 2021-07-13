@@ -1,4 +1,4 @@
-- name: Test Dicord Automation
+- name: Alarm Automation via Chatbot and Voice 
   connection:  network_cli
   gather_facts:  no
   hosts:  all
