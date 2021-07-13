@@ -1,0 +1,69 @@
+- name: Test Dicord Automation
+  connection:  network_cli
+  gather_facts:  no
+  hosts:  all
+  serial: 1
+  tasks:
+    - name: show interfaces brief
+      ios_command:
+        commands:
+          - sho ip int br
+      register: int_status_raw
+
+    - debug:
+        var: int_status_raw
+
+    - name: Gather Ansible Facts About Core
+      ios_facts:
+        gather_subset:
+          - all
+# Genie Parse Raw response #
+    - name: Set Fact Genie Filter
+      set_fact:
+        pyatsint_status_raw: "{{ int_status_raw['stdout'][0] | parse_genie(command='show ip interface brief', os='ios') }}"
+      delegate_to: localhost
+
+    - debug:
+        var: pyatsint_status_raw
+# Send to Discord
+    - name: Send Show Interface Status (DOWN/DOWN) to Discord Channel
+      uri:
+        url: "https://discord.com/api/webhooks/823184898541486080/P1lbmEHwlYwJu-Rf_ZOlI_Htquzs1KB83Y11k8AUCrp_NoeKy5mSBz6zvwmFy3xuIiBX"
+        method: POST
+        body_format: json
+        status_code: 204
+        return_content: no
+        validate_certs: no
+        body:
+          username: bachir
+          content: The Network Has An Alert For You from the Show Interface Brief Command on the Core
+          embeds:
+            - title: The following interface on {{ ansible_facts['net_hostname'] }} is DOWN / DOWN
+            - description: "{{ item.key }} is {{ item.value.status }}"
+      delegate_to: localhost
+      loop: "{{ pyatsint_status_raw.interface | dict2items }}"
+      when: item.value.status == "administratively down"
+
+# Send to Voice RSS
+    - name: Send Show Interface Status (DOWN/DOWN) to tts Voice RSS
+      uri:
+        url: "http://api.voicerss.org/?key=25f6c2d1c4a447d7ab0f2d2b40a9cd80&hl=en-us&c=MP3&src=The%20interface%20{{ item.key | regex_replace('/','_') }}%20on%20{{ ansible_facts['net_hostname'] }}%20is%20{{ item.value.status | regex_replace(' ','%20') }}"
+        method: GET
+        return_content: yes
+        validate_certs: no
+      delegate_to: localhost
+      register: speech_raw
+      loop: "{{ pyatsint_status_raw.interface | dict2items }}"
+      when: item.value.status == "administratively down"
+
+
+
+
+    #
+    - name: Copy to file
+      copy:
+        content: |
+          {{ item.content }}
+        dest: "{{ item.item.key | regex_replace('/','_') }}on{{ ansible_facts['net_hostname'] }}.MP3"
+      loop: "{{ speech_raw.results }}"
+      when: item.content_type is defined
