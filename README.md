@@ -1,5 +1,5 @@
 # Network_alarms_chatbot_voice
-Gathering network alarms via Chatbot and voice calls. <br /> 
+Gathering network alarms/alerts and sending them via Chatbot and/or voice calls. <br /> 
 The example used: An IOS device generating an alert when a specific interface is down. <br /> 
 
 ## Installation prerequisites
